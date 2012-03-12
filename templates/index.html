@@ -9,7 +9,22 @@
 
     updateGame = function() {
       console.log('updateGame');
+      $("#greenCard").text(newState['greenCard']);
+      $("#cardsPlayed").text(newState['cardsPlayed']);
       $("#players").text(newState['numberOfPlayers']);
+      $("#score").text(newState['score']);
+      if(newState['judge'] == true) {
+        $("#playerType").text('You are Judge');
+      } else {
+        $("#playerType").text('You are a Player');
+      }
+      $("#cards").html('');
+      for (var i = newState['cards'].length - 1; i >= 0; i--) {
+        var card = newState['cards'][i];
+        $("#cards").append("<input type='button' value='"+card+"' />");
+      };
+      //<input type="button" value="{{ card }}" />
+      console.log(newState['cards']);
     };
 
     sendMessage = function(path, opt_param) {
@@ -17,7 +32,7 @@
 
       //path += '?g=' + state.game_key;
       if (opt_param) {
-        path += '&' + opt_param;
+        path += '?' + opt_param;
       }
       var xhr = new XMLHttpRequest();
       xhr.open('POST', path, true);
@@ -61,7 +76,11 @@
 
       $('#cards').delegate('input', 'click', function(e) {
         var card = $(this).attr("value");
-        sendMessage('/play_card', 'c='+card);
+        if (newState['judge'] == true) {
+          sendMessage('/pick_winner', 'c='+card);
+        } else {
+          sendMessage('/play_card', 'c='+card);
+        }
       });
     });
 
@@ -70,14 +89,12 @@
 
 
 <div style="width:800px; margin: 0 auto;">
-<h3>Number of Players: <span id="players"></span></h3>
-<h1>{{ current_green_card }}</h1>
+<h4 id="playerType"></h4>
+<h3><span id="cardsPlayed"></span> of <span id="players"></span> cards played</h3>
+<h1 id="greenCard">{{ current_green_card }}</h1>
 
-<h2>Score: {{ score }}</h2>
+<h2>Score: <span id="score"></span></h2>
 <div id="cards">
-{% for card in cards %}
-    <input type="button" value="{{ card }}" />
-{% endfor %}
 </div>
 
 </div>

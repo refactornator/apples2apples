@@ -14,14 +14,29 @@ from gaesessions import get_current_session
 
 redCards = ['Ninjas', 'Tree Huggers', 'Ireland', 'Worms', 'Having a Baby', 'X-Rays',
       'Prince Charming', 'Wimbledon', 'Black Velvet', 'Bubble Gum', 'Europe', 
-      'United Nations', 'Salvador Dali', 'Supermodels', 'Gila Monsters']
+      'United Nations', 'Salvador Dali', 'Supermodels', 'Gila Monsters', 'Lollipops',
+      'Pigs', 'Eleanor Roosevelt', 'The Cold War', 'Brad Pitt', 'Soy Sauce', 'Swiss Cheese',
+      'My Family', 'A Nine Iron', 'Bad Dogs', 'Skiing', 'Hillary Rodham Clinton', 'Bill Gates',
+      'Rednecks', 'Global Warming', 'My Personality', 'Going to the Dentist', 'Oral Surgery',
+      'Pit Bulls', 'Body Odor', 'Sports Channels', 'Lemons', 'Boyfriends', 'Snakes', 'Glaciers',
+      'Parenting', 'The 1960s', 'A Crawl Space', 'Dr. Kevorkian', 'Mahatma Gandhi', 'Porsche Boxter',
+      'Science Fair Projects', 'Crazy Horse', 'Hollywood', 'Lenin\'s Tomb', 'The Green Bay Packers',
+      'Leeches', 'A Morgue', 'Waterbeds', 'Cleaning the Bathroom', 'The IRS', 'Thomas Edison',
+      'Nuclear Power Plants', 'State Fairs', 'The Far Right', 'Root Beer Floats', 'The Statue of Liberty',
+      'Cleopatra', 'Electric Eels', 'Baking Cookies', 'Elvis Presley', 'The Pentagon', 'Jacques Cousteau',
+      'Baby Showers', 'A Locker Room', 'Cigarette Burns', 'Beauty and the Beast', 'John F. Kennedy',
+      'Paying Taxes', 'Lawyers', 'The Milky Way', 'The Dallas Cowboys', 'Crystal Balls', 'Gold Chains',
+      'Keanu Reeves', 'Socks', 'Napoleon Bonaparte', 'Alfred Hitchcock', 'Bankruptcy', 'A Sunset']
 
-greenCards = ['Nasty', 'Charismatic', 'Naive', 'Shocking', 'Comfortable', 'Insulting']
-
-
-#cleanupInterval = datetime.timedelta(minutes = 1)
-
-currentGreenCard = ""
+greenCards = ['Nasty', 'Charismatic', 'Naive', 'Shocking', 'Comfortable', 'Insulting', 'Rare', 'Friendly',
+              'Spunky', 'Classic', 'Swift', 'Dreamy', 'Bright', 'Unforgettable', 'Senseless', 'Intense',
+              'Bold', 'Manly', 'Clueless', 'Ordinary', 'Relaxing', 'Silly', 'Ancient', 'Innocent', 'Snappy',
+              'Shiny', 'Healthy', 'Luscious', 'Arrogant', 'Frazzled', 'Distinguished', 'Complicated',
+              'Melodramatic', 'Cosmopolitan', 'Adorable', 'Rich', 'Principled', 'Animated', 'Corrupt',
+              'Boisterous', 'Horrifying', 'Risky', 'Chewy', 'Miserable', 'Misunderstood', 'Explosive',
+              'Luxurious', 'Heartless', 'Handsome', 'Lazy', 'Glitzy', 'Comical', 'Cool', 'European',
+              'Loud', 'Crazed', 'Dramatic', 'Selfish', 'Cheesy', 'Spiritual', 'Cute', 'Believable',
+              'Normal', 'Bogus']
 
 #class Game(db.Model):
 #  """All the data we store for a game"""
@@ -34,19 +49,75 @@ currentGreenCard = ""
 
 class Game():
   greenCard = choice(greenCards)
+  cardsInPlay = []
   players = {}
+  judges = []
+  discardPile = []
+  greenDiscardPile = []
 
   def getOrCreatePlayer(self, sid):
     if not self.players.has_key(sid):
       self.players[sid] = Player()
+      self.players[sid].cards = []
+      while len(self.players[sid].cards) < 7:
+        newCard = choice(redCards)
+        if newCard not in self.discardPile:
+          self.players[sid].cards.append(newCard)
+          self.discardPile.append(newCard)
+    if len(self.players) == 1:
+      self.players[sid].judge = True
+      self.judges.append(sid)
     return self.players[sid]
   
   def deletePlayer(self, sid):
-    logging.info(self.players)
     del self.players[sid]
 
   def getNumberOfPlayers(self):
-    return len(self.players)
+    counter = 0
+    for sid in self.players:
+      if self.players[sid].judge is not True:
+        counter += 1
+    return counter
+
+  def getCardsPlayed(self):
+    cardCount = 0
+    for player in self.players:
+      if self.players[player].played_card != '':
+        cardCount += 1
+    return cardCount
+
+  def getPlayer(self, sid):
+    return self.players[sid]
+
+  def getPlayerScore(self, sid):
+    return self.players[sid].score
+
+  def pickWinner(self, card):
+    self.cardsInPlay = []
+    self.greenDiscardPile.append(self.greenCard)
+    judged = False
+    for sid in self.players:
+      if self.players[sid].judge == True:
+        self.players[sid].judge = False
+      else:
+        player = self.players[sid]
+        if sid not in self.judges and not judged:
+          player.judge = True
+          self.judges.append(sid)
+          judged = True
+        if player.played_card == card:
+          player.score += 1
+          player.won_cards.append(player.played_card)
+
+        player.cards.remove(player.played_card)
+        while len(player.cards) < 7:
+          player.cards.append(choice(redCards))
+        player.played_card = ''
+    self.greenCard = choice(greenCards)
+  
+  def play_card(self, sid, card):
+    self.cardsInPlay.append(card)
+    self.players[sid].played_card = card
 
 gameObject = Game()
 
@@ -54,6 +125,8 @@ class Player():
   score = 0
   cards = []
   won_cards = []
+  played_card = ''
+  judge = False
 
 class GameUpdater():
   game = None
@@ -61,47 +134,26 @@ class GameUpdater():
   def __init__(self, game):
     self.game = game
 
-  def get_game_message(self):
-    logging.info(self.game.getNumberOfPlayers())
+  def get_game_message(self, sid):
+    player = self.game.getPlayer(sid)
     gameUpdate = {
-      'numberOfPlayers': self.game.getNumberOfPlayers()
+      'greenCard': self.game.greenCard,
+      'cardsPlayed': self.game.getCardsPlayed(),
+      'numberOfPlayers': self.game.getNumberOfPlayers(),
+      'score': player.score,
+      'judge': player.judge
     }
+
+    if player.judge == True:
+      gameUpdate['cards'] = self.game.cardsInPlay
+    else:
+      gameUpdate['cards'] = player.cards
     return simplejson.dumps(gameUpdate)
 
   def send_update(self):
-    message = self.get_game_message()
-    players = self.game.players
-    for player in players:
+    for player in self.game.players:
+      message = self.get_game_message(player)
       channel.send_message(player, message)
-
-  def check_win(self):
-    if self.game.moveX:
-      # O just moved, check for O wins
-      wins = Wins().o_wins
-      potential_winner = self.game.userO.user_id()
-    else:
-      # X just moved, check for X wins
-      wins = Wins().x_wins
-      potential_winner = self.game.userX.user_id()
-      
-    for win in wins:
-      if win.match(self.game.board):
-        self.game.winner = potential_winner
-        self.game.winning_board = win.pattern
-        return
-
-  def make_move(self, position, user):
-    if position >= 0 and user == self.game.userX or user == self.game.userO:
-      if self.game.moveX == (user == self.game.userX):
-        boardList = list(self.game.board)
-        if (boardList[position] == ' '):
-          boardList[position] = 'X' if self.game.moveX else 'O'
-          self.game.board = "".join(boardList)
-          self.game.moveX = not self.game.moveX
-          self.check_win()
-          self.game.put()
-          self.send_update()
-          return
 
 
 class GameFromRequest():
@@ -125,29 +177,30 @@ class OpenedPage(webapp.RequestHandler):
     GameUpdater(gameObject).send_update()
 
 class PlayCard(webapp.RequestHandler):
-  def get(self):
-    card self.request.get('c')
+  def post(self):
+    card = self.request.get('c')
     session = get_current_session()
+    gameObject.play_card(session.sid, card)
+    GameUpdater(gameObject).send_update()
+
+class PickWinner(webapp.RequestHandler):
+  def post(self):
+    card = self.request.get('c')
+    gameObject.pickWinner(card)
+    GameUpdater(gameObject).send_update()
 
 class MainHandler(webapp.RequestHandler):
   def get(self):
     session = get_current_session()
     session['is_playing'] = True
-    logging.info(session)
-
-    d = {}
-    d['current_green_card'] = gameObject.greenCard
 
     player = gameObject.getOrCreatePlayer(session.sid)
-    logging.info(player)
 
-    while len(player.cards) < 7:
-      player.cards.append(choice(redCards))
-
+    d = {}
     d['score'] = player.score
     d['cards'] = player.cards
-    token = channel.create_channel(session.sid)
-    d['token'] = token
+    d['token'] = channel.create_channel(session.sid)
+    d['current_green_card'] = gameObject.greenCard
 
     render_template(self, "index.html", d)
 
@@ -166,6 +219,7 @@ class UserDisconnectedHandler(webapp.RequestHandler):
 application = webapp.WSGIApplication([('/', MainHandler),
                                       ('/opened', OpenedPage),
                                       ('/play_card', PlayCard),
+                                      ('/pick_winner', PickWinner),
                                       ('/_ah/channel/connected/', UserConnectedHandler),
                                       ('/_ah/channel/disconnected/', UserDisconnectedHandler)])
 
