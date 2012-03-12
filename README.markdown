@@ -1,4 +1,4 @@
-# apples2apples: A Recreation of [Apples 2 Apples](http://en.wikipedia.org/wiki/Apples_to_Apples) in Google App Engine
+# apples2apples: [Apples 2 Apples](http://en.wikipedia.org/wiki/Apples_to_Apples) in Google App Engine
 
 I wanted to learn more about the [Google App Engine Channel API](http://code.google.com/appengine/docs/python/channel/)
 so I created a card game.
